@@ -1,0 +1,24 @@
+{
+  "name": "reduse",
+  "version": "0.0.1",
+  "description": "converts image files to a specific format in a project and or compresses them in the process",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tochi Bedford",
+  "dependencies": {
+    "@types/micromatch": "^4.0.2",
+    "@types/minimist": "^1.2.2",
+    "@types/parse-gitignore": "^1.0.0",
+    "cheerio": "^1.0.0-rc.12",
+    "glob": "^9.3.2",
+    "ignore": "^5.2.4",
+    "micromatch": "^4.0.5",
+    "minimist": "^1.2.8",
+    "parse-gitignore": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.9"
+  }
+}
