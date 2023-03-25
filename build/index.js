@@ -1,37 +1,14 @@
 "use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
-const glob = __importStar(require("glob"));
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const glob_1 = __importDefault(require("glob"));
 const ignore_1 = __importDefault(require("ignore"));
 const minimist_1 = __importDefault(require("minimist"));
-const cheerio = __importStar(require("cheerio"));
+const cheerio_1 = __importDefault(require("cheerio"));
 const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
@@ -43,8 +20,8 @@ function getCommandLineArguments() {
         console.error('Usage: node index.js <directory>');
         process.exit(1);
     }
-    const workspaceDir = path.resolve(_[0]);
-    if (!fs.existsSync(workspaceDir)) {
+    const workspaceDir = path_1.default.resolve(_[0]);
+    if (!fs_1.default.existsSync(workspaceDir)) {
         console.error(`Directory "${workspaceDir}" does not exist`);
         process.exit(1);
     }
@@ -58,19 +35,19 @@ function getCommandLineArguments() {
  * @param ignoreNodeModules - an optional boolean that determines whether to ignore the "node_modules" folder, Defaults to true
  */
 function listRelevantFiles(directory, fileExtensions, ignoreNodeModules = true) {
-    const ignoreFilePath = path.join(directory, '.gitignore');
-    let ignoreRules = fs.existsSync(ignoreFilePath)
-        ? (0, ignore_1.default)().add(fs.readFileSync(ignoreFilePath, 'utf8'))
+    const ignoreFilePath = path_1.default.join(directory, '.gitignore');
+    let ignoreRules = fs_1.default.existsSync(ignoreFilePath)
+        ? (0, ignore_1.default)().add(fs_1.default.readFileSync(ignoreFilePath, 'utf8'))
         : (0, ignore_1.default)();
     ignoreRules = ignoreNodeModules ? ignoreRules.add("node_modules") : ignoreRules;
     const options = {
         cwd: directory,
         absolute: true,
     };
-    const files = fileExtensions.flatMap((ext) => glob.sync(`**/*${ext}`, options));
+    const files = fileExtensions.flatMap((ext) => glob_1.default.sync(`**/*${ext}`, options));
     const fil = ignoreRules.createFilter();
     const filteredWithIgnore = files.filter(file => {
-        return fil(path.relative("/", file));
+        return fil(path_1.default.relative("/", file));
     });
     console.log(`Found ${filteredWithIgnore.length} files`);
     return filteredWithIgnore;
@@ -92,9 +69,9 @@ function convertFileListToDictionary(fileList) {
     const files = {};
     fileList.forEach(file => {
         var _a;
-        files[path.extname(file)] === undefined ?
-            files[path.extname(file)] = [file] :
-            (_a = files[path.extname(file)]) === null || _a === void 0 ? void 0 : _a.push(file);
+        files[path_1.default.extname(file)] === undefined ?
+            files[path_1.default.extname(file)] = [file] :
+            (_a = files[path_1.default.extname(file)]) === null || _a === void 0 ? void 0 : _a.push(file);
     });
     return files;
 }
@@ -104,13 +81,13 @@ function convertFileListToDictionary(fileList) {
  */
 function findImagesInHTML(file) {
     //TODO: add support for images loaded through prefetching; i.e. <link href="image.jpeg" />
-    const html = fs.readFileSync(file, 'utf8');
-    const $ = cheerio.load(html);
+    const html = fs_1.default.readFileSync(file, 'utf8');
+    const $ = cheerio_1.default.load(html);
     const imageSources = $('img').map((i, el) => {
         const source = $(el).attr('src');
         if (source) {
             //relative path between current working directory and "file"'s directory + source
-            return path.join(path.relative("/", path.dirname(file)), source);
+            return path_1.default.join(path_1.default.relative("/", path_1.default.dirname(file)), source);
         }
         else {
             return undefined;
@@ -132,6 +109,12 @@ function buildImageReferenceDictionary(files) {
     });
     return imageReferencesFromFiles;
 }
+// async function convertImage(inputFilePath: string, outputFilePath: string, outputFormat: string): Promise<void> {
+//   // Use Sharp to read the input image file
+//   const image = sharp(inputFilePath);
+//   // Use Sharp to set the output format and write to the output file path
+//   await image.toFormat(outputFormat).toFile(outputFilePath);
+// }
 function main() {
     const { workspaceDir, fixImports } = getCommandLineArguments();
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);

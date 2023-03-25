@@ -1,9 +1,10 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import * as glob from 'glob';
+import fs from 'fs';
+import path from 'path';
+import glob from 'glob';
+import sharp from 'sharp';
 import ignore from 'ignore';
 import minimist from 'minimist';
-import * as cheerio from 'cheerio';
+import cheerio from 'cheerio';
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
@@ -121,6 +122,15 @@ function buildImageReferenceDictionary(files: { [key in typeof fileExtensions[nu
 
     return imageReferencesFromFiles
 }
+
+
+// async function convertImage(inputFilePath: string, outputFilePath: string, outputFormat: string): Promise<void> {
+//   // Use Sharp to read the input image file
+//   const image = sharp(inputFilePath);
+
+//   // Use Sharp to set the output format and write to the output file path
+//   await image.toFormat(outputFormat).toFile(outputFilePath);
+// }
 
 function main() {
     const { workspaceDir, fixImports } = getCommandLineArguments()
