@@ -38,16 +38,17 @@ const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
  */
 function getCommandLineArguments() {
     const args = (0, minimist_1.default)(process.argv.slice(2));
+    const { _, fixImports } = args;
     if (!args._[0]) {
         console.error('Usage: node index.js <directory>');
         process.exit(1);
     }
-    const workspaceDir = path.resolve(args._[0]);
+    const workspaceDir = path.resolve(_[0]);
     if (!fs.existsSync(workspaceDir)) {
         console.error(`Directory "${workspaceDir}" does not exist`);
         process.exit(1);
     }
-    return workspaceDir;
+    return { workspaceDir, fixImports };
 }
 /**
  * Returns a list of files in the directory that have any of the file extensions passed to the function
@@ -71,7 +72,7 @@ function listRelevantFiles(directory, fileExtensions, ignoreNodeModules = true) 
     const filteredWithIgnore = files.filter(file => {
         return fil(path.relative("/", file));
     });
-    console.log(`Found ${filteredWithIgnore.length} files:`);
+    console.log(`Found ${filteredWithIgnore.length} files`);
     return filteredWithIgnore;
 }
 /**
@@ -131,13 +132,12 @@ function buildImageReferenceDictionary(files) {
     });
     return imageReferencesFromFiles;
 }
-// test with // C:\Users\user\Documents\PRog\fountain-baby
 function main() {
-    const workspaceDir = getCommandLineArguments();
+    const { workspaceDir, fixImports } = getCommandLineArguments();
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
     const imageReferencesFromFiles = buildImageReferenceDictionary(files);
-    console.log(files);
-    console.log(imageReferencesFromFiles); // should images be keys and not the files themselves?
+    // console.log(files)
+    // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
 }
 main();

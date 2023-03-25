@@ -11,22 +11,22 @@ const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js"
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
-function getCommandLineArguments(): string {
+function getCommandLineArguments(): { workspaceDir: string, fixImports: boolean } {
     const args = minimist(process.argv.slice(2));
-
+    const { _, fixImports } = args
     if (!args._[0]) {
         console.error('Usage: node index.js <directory>');
         process.exit(1);
     }
 
-    const workspaceDir = path.resolve(args._[0]);
+    const workspaceDir = path.resolve(_[0]);
 
     if (!fs.existsSync(workspaceDir)) {
         console.error(`Directory "${workspaceDir}" does not exist`);
         process.exit(1);
     }
 
-    return workspaceDir
+    return { workspaceDir, fixImports }
 }
 
 /**
@@ -51,7 +51,7 @@ function listRelevantFiles(directory: string, fileExtensions: string[], ignoreNo
     const filteredWithIgnore = files.filter(file => {
         return fil(path.relative("/", file))
     })
-    console.log(`Found ${filteredWithIgnore.length} files:`);
+    console.log(`Found ${filteredWithIgnore.length} files`);
     return filteredWithIgnore;
 }
 
@@ -122,10 +122,8 @@ function buildImageReferenceDictionary(files: { [key in typeof fileExtensions[nu
     return imageReferencesFromFiles
 }
 
-
-// test with // C:\Users\user\Documents\PRog\fountain-baby
 function main() {
-    const workspaceDir = getCommandLineArguments()
+    const { workspaceDir, fixImports } = getCommandLineArguments()
 
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions])
 
@@ -133,8 +131,8 @@ function main() {
 
     const imageReferencesFromFiles = buildImageReferenceDictionary(files)
 
-    console.log(files)
-    console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
+    // console.log(files)
+    // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
 }
 
 main();
