@@ -4,7 +4,7 @@ import glob from 'glob'
 import sharp from 'sharp'
 import ignore from 'ignore'
 import minimist from 'minimist'
-import cheerio from 'cheerio'
+import * as cheerio from 'cheerio'
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
@@ -181,14 +181,17 @@ function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof shar
 function main() {
     const { workspaceDir, fixImports } = getCommandLineArguments()
 
+    if (!fixImports) {
+        const conversionMap = convertImagesInDirectory(workspaceDir, 'webp')
+        console.log(conversionMap)
+    }
+
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions])
 
     const files = convertFileListToDictionary(fileList)
 
     const imageReferencesFromFiles = buildImageReferenceDictionary(files)
 
-    const conversionMap = convertImagesInDirectory(workspaceDir, 'webp')
-    console.log(conversionMap)
     // const conversionList = 
     // console.log(files)
     // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
