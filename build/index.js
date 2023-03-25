@@ -109,39 +109,14 @@ function convertFileListToDictionary(fileList) {
     return files;
 }
 /**
- * Returns a list of image paths references in a html file
- * @param file path to a html file
+ * Converts a compatible image type to another compatible type.
+ *
+ * Compatible formats are: ```heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl```
+ *
+ * @param inputFilePath - a string representing file path to image to be converted
+ * @param outputFilePath - a string representing file path where new image is to be written to
+ * @param outputFormat - a string representing the image format of `outputFilePath`. See compatible types above.
  */
-function findImagesInHTML(file) {
-    //TODO: add support for images loaded through prefetching i.e. <link href="image.jpeg" />
-    const html = fs_1.default.readFileSync(file, 'utf8');
-    const $ = cheerio.load(html, null, false);
-    const imageSources = $('img').map((i, el) => {
-        const source = $(el).attr('src');
-        if (source) {
-            //relative path between current working directory and "file"'s directory + source
-            return path_1.default.join(path_1.default.relative("/", path_1.default.dirname(file)), source);
-        }
-        else {
-            return undefined;
-        }
-    }).get();
-    return imageSources;
-}
-/**
- * Returns a dictionary of image references
- * //more details to come
- * @param files - an object/dictionary that has it's keys as images and it's values lists of files that reference said images
- * @returns
- */
-function buildImageReferenceDictionary(files) {
-    var _a;
-    const imageReferencesFromFiles = {};
-    (_a = files['.html']) === null || _a === void 0 ? void 0 : _a.forEach(file => {
-        imageReferencesFromFiles[file] = findImagesInHTML(file);
-    });
-    return imageReferencesFromFiles;
-}
 function convertImage(inputFilePath, outputFilePath, outputFormat) {
     return __awaiter(this, void 0, void 0, function* () {
         // Use Sharp to read the input image file
@@ -155,6 +130,21 @@ function convertImage(inputFilePath, outputFilePath, outputFormat) {
         }
     });
 }
+/**
+ * Converts images in given workspace directory to specified output format and returns a conversion map, which is an object with the shape:
+ * ```
+ * {
+ *  "path/to/original/image1": "path/to/converted/image1",
+ *  "path/to/original/image2": "path/to/converted/image2",
+ *    ...
+ * }
+ * ```
+ *
+ * Compatible formats are: ```heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl```
+ *
+ * @param workspaceDir - a string representing the workspace direectory of the project to be converted
+ * @param outputFormat - a string representing the image format of `outputFilePath`. See compatible types above.
+ */
 function convertImagesInDirectory(workspaceDir, outputFormat) {
     const conversionMap = {};
     const imageFilesList = listRelevantFiles(workspaceDir, [
@@ -189,6 +179,11 @@ function convertImagesInDirectory(workspaceDir, outputFormat) {
     });
     return conversionMap;
 }
+/**
+ * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
+ * @param pathToFile - string representing absolute path to html file
+ * @param conversionMap - conversion map object that holds information on input and output images
+ */
 function replaceInHTML(pathToFile, conversionMap) {
     const html = fs_1.default.readFileSync(pathToFile, 'utf8');
     const $ = cheerio.load(html, null, true);
@@ -206,16 +201,13 @@ function main() {
         throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`);
     }
     const conversionMap = convertImagesInDirectory(workspaceDir, format);
+    console.log(`Converted ${Object.keys(conversionMap).length} images (See conversion map below): `);
+    console.log(conversionMap);
     if (!fixImports) {
-        console.log(conversionMap);
         return;
     }
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
-    // const imageReferencesFromFiles = buildImageReferenceDictionary(files)
-    // const conversionList = 
-    // console.log(files)
-    // console.log(files) // should images be keys and not the files themselves?
     if (files['.html']) {
         replaceInHTML(files['.html'][0], conversionMap);
     }
