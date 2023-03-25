@@ -1,30 +1,30 @@
-import fs from 'fs';
-import path from 'path';
-import glob from 'glob';
-import sharp from 'sharp';
-import ignore from 'ignore';
-import minimist from 'minimist';
-import cheerio from 'cheerio';
+import fs from 'fs'
+import path from 'path'
+import glob from 'glob'
+import sharp from 'sharp'
+import ignore from 'ignore'
+import minimist from 'minimist'
+import cheerio from 'cheerio'
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
-const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
+const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
 function getCommandLineArguments(): { workspaceDir: string, fixImports: boolean } {
-    const args = minimist(process.argv.slice(2));
+    const args = minimist(process.argv.slice(2))
     const { _, fixImports } = args
     if (!args._[0]) {
-        console.error('Usage: node index.js <directory>');
-        process.exit(1);
+        console.error('Usage: node index.js <directory>')
+        process.exit(1)
     }
 
-    const workspaceDir = path.resolve(_[0]);
+    const workspaceDir = path.resolve(_[0])
 
     if (!fs.existsSync(workspaceDir)) {
-        console.error(`Directory "${workspaceDir}" does not exist`);
-        process.exit(1);
+        console.error(`Directory "${workspaceDir}" does not exist`)
+        process.exit(1)
     }
 
     return { workspaceDir, fixImports }
@@ -38,22 +38,22 @@ function getCommandLineArguments(): { workspaceDir: string, fixImports: boolean 
  * @param ignoreNodeModules - an optional boolean that determines whether to ignore the "node_modules" folder, Defaults to true
  */
 function listRelevantFiles(directory: string, fileExtensions: string[], ignoreNodeModules = true) {
-    const ignoreFilePath = path.join(directory, '.gitignore');
+    const ignoreFilePath = path.join(directory, '.gitignore')
     let ignoreRules = fs.existsSync(ignoreFilePath)
         ? ignore().add(fs.readFileSync(ignoreFilePath, 'utf8'))
-        : ignore();
+        : ignore()
     ignoreRules = ignoreNodeModules ? ignoreRules.add("node_modules") : ignoreRules
     const options = {
         cwd: directory,
         absolute: true,
-    };
-    const files = fileExtensions.flatMap((ext) => glob.sync(`**/*${ext}`, options));
+    }
+    const files = fileExtensions.flatMap((ext) => glob.sync(`**/*${ext}`, options))
     const fil = ignoreRules.createFilter()
     const filteredWithIgnore = files.filter(file => {
         return fil(path.relative("/", file))
     })
-    console.log(`Found ${filteredWithIgnore.length} files`);
-    return filteredWithIgnore;
+    console.log(`Found ${filteredWithIgnore.length} files`)
+    return filteredWithIgnore
 }
 
 /**
@@ -88,9 +88,9 @@ function convertFileListToDictionary(fileList: string[]) {
  * @param file path to a html file
  */
 function findImagesInHTML(file: string) {
-    //TODO: add support for images loaded through prefetching; i.e. <link href="image.jpeg" />
-    const html = fs.readFileSync(file, 'utf8');
-    const $ = cheerio.load(html);
+    //TODO: add support for images loaded through prefetching i.e. <link href="image.jpeg" />
+    const html = fs.readFileSync(file, 'utf8')
+    const $ = cheerio.load(html)
 
     const imageSources = $('img').map((i, el) => {
         const source = $(el).attr('src')
@@ -100,9 +100,9 @@ function findImagesInHTML(file: string) {
         } else {
             return undefined
         }
-    }).get();
+    }).get()
 
-    return imageSources;
+    return imageSources
 }
 
 /**
@@ -123,14 +123,60 @@ function buildImageReferenceDictionary(files: { [key in typeof fileExtensions[nu
     return imageReferencesFromFiles
 }
 
+async function convertImage(inputFilePath: string, outputFilePath: string, outputFormat: keyof sharp.FormatEnum | sharp.AvailableFormatInfo): Promise<void> {
+    // Use Sharp to read the input image file
+    const image = sharp(inputFilePath)
 
-// async function convertImage(inputFilePath: string, outputFilePath: string, outputFormat: string): Promise<void> {
-//   // Use Sharp to read the input image file
-//   const image = sharp(inputFilePath);
+    // Use Sharp to set the output format and write to the output file path
+    try {
+        await image.toFormat(outputFormat).toFile(outputFilePath)
+    } catch {
+        console.log(`Same file input -> output ${inputFilePath}`)
+    }
+}
 
-//   // Use Sharp to set the output format and write to the output file path
-//   await image.toFormat(outputFormat).toFile(outputFilePath);
-// }
+function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof sharp.FormatEnum | sharp.AvailableFormatInfo) {
+    const conversionMap: {
+        [key: string]: string
+    } = {
+
+    }
+
+    const imageFilesList = listRelevantFiles(workspaceDir, [
+        "avif",
+        "dz",
+        "fits",
+        "gif",
+        "heif",
+        "input",
+        "jpeg",
+        "jpg",
+        "jp2",
+        "jxl",
+        "magick",
+        "openslide",
+        "pdf",
+        "png",
+        "ppm",
+        "raw",
+        "svg",
+        "tiff",
+        "tif",
+        "v",
+        "webp"
+    ])
+
+    imageFilesList.forEach(imageFilePath => {
+        const extname = path.extname(imageFilePath)
+        const basename = path.basename(imageFilePath, extname)
+        const outputPath = path.join(path.dirname(imageFilePath), `${basename}.${outputFormat}`)
+
+        convertImage(imageFilePath, outputPath, outputFormat)
+        conversionMap[imageFilePath] = outputPath
+    })
+
+    return conversionMap
+}
 
 function main() {
     const { workspaceDir, fixImports } = getCommandLineArguments()
@@ -141,8 +187,11 @@ function main() {
 
     const imageReferencesFromFiles = buildImageReferenceDictionary(files)
 
+    const conversionMap = convertImagesInDirectory(workspaceDir, 'webp')
+    console.log(conversionMap)
+    // const conversionList = 
     // console.log(files)
     // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
 }
 
-main();
+main()

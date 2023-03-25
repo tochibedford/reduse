@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -6,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const glob_1 = __importDefault(require("glob"));
+const sharp_1 = __importDefault(require("sharp"));
 const ignore_1 = __importDefault(require("ignore"));
 const minimist_1 = __importDefault(require("minimist"));
 const cheerio_1 = __importDefault(require("cheerio"));
@@ -80,7 +90,7 @@ function convertFileListToDictionary(fileList) {
  * @param file path to a html file
  */
 function findImagesInHTML(file) {
-    //TODO: add support for images loaded through prefetching; i.e. <link href="image.jpeg" />
+    //TODO: add support for images loaded through prefetching i.e. <link href="image.jpeg" />
     const html = fs_1.default.readFileSync(file, 'utf8');
     const $ = cheerio_1.default.load(html);
     const imageSources = $('img').map((i, el) => {
@@ -109,17 +119,61 @@ function buildImageReferenceDictionary(files) {
     });
     return imageReferencesFromFiles;
 }
-// async function convertImage(inputFilePath: string, outputFilePath: string, outputFormat: string): Promise<void> {
-//   // Use Sharp to read the input image file
-//   const image = sharp(inputFilePath);
-//   // Use Sharp to set the output format and write to the output file path
-//   await image.toFormat(outputFormat).toFile(outputFilePath);
-// }
+function convertImage(inputFilePath, outputFilePath, outputFormat) {
+    return __awaiter(this, void 0, void 0, function* () {
+        // Use Sharp to read the input image file
+        const image = (0, sharp_1.default)(inputFilePath);
+        // Use Sharp to set the output format and write to the output file path
+        try {
+            yield image.toFormat(outputFormat).toFile(outputFilePath);
+        }
+        catch (_a) {
+            console.log(`Same file input -> output ${inputFilePath}`);
+        }
+    });
+}
+function convertImagesInDirectory(workspaceDir, outputFormat) {
+    const conversionMap = {};
+    const imageFilesList = listRelevantFiles(workspaceDir, [
+        "avif",
+        "dz",
+        "fits",
+        "gif",
+        "heif",
+        "input",
+        "jpeg",
+        "jpg",
+        "jp2",
+        "jxl",
+        "magick",
+        "openslide",
+        "pdf",
+        "png",
+        "ppm",
+        "raw",
+        "svg",
+        "tiff",
+        "tif",
+        "v",
+        "webp"
+    ]);
+    imageFilesList.forEach(imageFilePath => {
+        const extname = path_1.default.extname(imageFilePath);
+        const basename = path_1.default.basename(imageFilePath, extname);
+        const outputPath = path_1.default.join(path_1.default.dirname(imageFilePath), `${basename}.${outputFormat}`);
+        convertImage(imageFilePath, outputPath, outputFormat);
+        conversionMap[imageFilePath] = outputPath;
+    });
+    return conversionMap;
+}
 function main() {
     const { workspaceDir, fixImports } = getCommandLineArguments();
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
     const imageReferencesFromFiles = buildImageReferenceDictionary(files);
+    const conversionMap = convertImagesInDirectory(workspaceDir, 'webp');
+    console.log(conversionMap);
+    // const conversionList = 
     // console.log(files)
     // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
 }
