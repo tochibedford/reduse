@@ -48,7 +48,7 @@ const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
  */
 function getCommandLineArguments() {
     const args = (0, minimist_1.default)(process.argv.slice(2));
-    const { _, fixImports } = args;
+    const { _, f, fixImports } = args;
     if (!args._[0]) {
         console.error('Usage: node index.js <directory>');
         process.exit(1);
@@ -58,7 +58,7 @@ function getCommandLineArguments() {
         console.error(`Directory "${workspaceDir}" does not exist`);
         process.exit(1);
     }
-    return { workspaceDir, fixImports };
+    return { workspaceDir, format: f, fixImports };
 }
 /**
  * Returns a list of files in the directory that have any of the file extensions passed to the function
@@ -115,7 +115,7 @@ function convertFileListToDictionary(fileList) {
 function findImagesInHTML(file) {
     //TODO: add support for images loaded through prefetching i.e. <link href="image.jpeg" />
     const html = fs_1.default.readFileSync(file, 'utf8');
-    const $ = cheerio.load(html);
+    const $ = cheerio.load(html, null, false);
     const imageSources = $('img').map((i, el) => {
         const source = $(el).attr('src');
         if (source) {
@@ -131,7 +131,7 @@ function findImagesInHTML(file) {
 /**
  * Returns a dictionary of image references
  * //more details to come
- * @param files - an object/dictionary that has it's keys as file extensions and it's values as the file paths
+ * @param files - an object/dictionary that has it's keys as images and it's values lists of files that reference said images
  * @returns
  */
 function buildImageReferenceDictionary(files) {
@@ -189,17 +189,35 @@ function convertImagesInDirectory(workspaceDir, outputFormat) {
     });
     return conversionMap;
 }
+function replaceInHTML(pathToFile, conversionMap) {
+    const html = fs_1.default.readFileSync(pathToFile, 'utf8');
+    const $ = cheerio.load(html, null, true);
+    $('img').toArray().forEach(el => {
+        const source = $(el).attr('src');
+        if (source) {
+            $(el).attr('src', path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), source)]));
+        }
+    });
+    fs_1.default.writeFileSync(pathToFile, $.html());
+}
 function main() {
-    const { workspaceDir, fixImports } = getCommandLineArguments();
+    const { workspaceDir, format, fixImports } = getCommandLineArguments();
+    if (!Object.keys(sharp_1.default.format).includes(format)) {
+        throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`);
+    }
+    const conversionMap = convertImagesInDirectory(workspaceDir, format);
     if (!fixImports) {
-        const conversionMap = convertImagesInDirectory(workspaceDir, 'webp');
         console.log(conversionMap);
+        return;
     }
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
-    const imageReferencesFromFiles = buildImageReferenceDictionary(files);
+    // const imageReferencesFromFiles = buildImageReferenceDictionary(files)
     // const conversionList = 
     // console.log(files)
-    // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
+    // console.log(files) // should images be keys and not the files themselves?
+    if (files['.html']) {
+        replaceInHTML(files['.html'][0], conversionMap);
+    }
 }
 main();

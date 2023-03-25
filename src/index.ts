@@ -12,9 +12,10 @@ const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js"
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
-function getCommandLineArguments(): { workspaceDir: string, fixImports: boolean } {
+function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.FormatEnum, fixImports: boolean } {
     const args = minimist(process.argv.slice(2))
-    const { _, fixImports } = args
+
+    const { _, f, fixImports } = args
     if (!args._[0]) {
         console.error('Usage: node index.js <directory>')
         process.exit(1)
@@ -27,7 +28,7 @@ function getCommandLineArguments(): { workspaceDir: string, fixImports: boolean 
         process.exit(1)
     }
 
-    return { workspaceDir, fixImports }
+    return { workspaceDir, format: f, fixImports }
 }
 
 /**
@@ -90,7 +91,7 @@ function convertFileListToDictionary(fileList: string[]) {
 function findImagesInHTML(file: string) {
     //TODO: add support for images loaded through prefetching i.e. <link href="image.jpeg" />
     const html = fs.readFileSync(file, 'utf8')
-    const $ = cheerio.load(html)
+    const $ = cheerio.load(html, null, false)
 
     const imageSources = $('img').map((i, el) => {
         const source = $(el).attr('src')
@@ -108,7 +109,7 @@ function findImagesInHTML(file: string) {
 /**
  * Returns a dictionary of image references 
  * //more details to come
- * @param files - an object/dictionary that has it's keys as file extensions and it's values as the file paths
+ * @param files - an object/dictionary that has it's keys as images and it's values lists of files that reference said images
  * @returns 
  */
 function buildImageReferenceDictionary(files: { [key in typeof fileExtensions[number]]?: string[] }) {
@@ -128,6 +129,7 @@ async function convertImage(inputFilePath: string, outputFilePath: string, outpu
     const image = sharp(inputFilePath)
 
     // Use Sharp to set the output format and write to the output file path
+
     try {
         await image.toFormat(outputFormat).toFile(outputFilePath)
     } catch {
@@ -178,23 +180,47 @@ function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof shar
     return conversionMap
 }
 
+function replaceInHTML(pathToFile: string, conversionMap: {
+    [key: string]: string;
+}) {
+    const html = fs.readFileSync(pathToFile, 'utf8')
+    const $ = cheerio.load(html, null, true)
+
+    $('img').toArray().forEach(el => {
+        const source = $(el).attr('src')
+        if (source) {
+            $(el).attr('src', path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)]))
+        }
+    })
+    fs.writeFileSync(pathToFile, $.html());
+}
+
 function main() {
-    const { workspaceDir, fixImports } = getCommandLineArguments()
+    const { workspaceDir, format, fixImports } = getCommandLineArguments()
+
+    if (!Object.keys(sharp.format).includes(format)) {
+        throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`)
+    }
+
+    const conversionMap = convertImagesInDirectory(workspaceDir, format)
 
     if (!fixImports) {
-        const conversionMap = convertImagesInDirectory(workspaceDir, 'webp')
         console.log(conversionMap)
+        return
     }
 
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions])
 
     const files = convertFileListToDictionary(fileList)
 
-    const imageReferencesFromFiles = buildImageReferenceDictionary(files)
+    // const imageReferencesFromFiles = buildImageReferenceDictionary(files)
 
     // const conversionList = 
     // console.log(files)
-    // console.log(imageReferencesFromFiles) // should images be keys and not the files themselves?
+    // console.log(files) // should images be keys and not the files themselves?
+    if (files['.html']) {
+        replaceInHTML(files['.html'][0], conversionMap)
+    }
 }
 
 main()
