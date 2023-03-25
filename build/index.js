@@ -33,6 +33,9 @@ const ignore_1 = __importDefault(require("ignore"));
 const minimist_1 = __importDefault(require("minimist"));
 const cheerio = __importStar(require("cheerio"));
 const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
+/**
+ * @description Returns the workspace directory passed to the program via command-line and returns it
+ */
 function getCommandLineArguments() {
     const args = (0, minimist_1.default)(process.argv.slice(2));
     if (!args._[0]) {
@@ -46,14 +49,21 @@ function getCommandLineArguments() {
     }
     return workspaceDir;
 }
-function listRelevantFiles(where, fileExtensions, ignoreNodeModules = true) {
-    const ignoreFilePath = path.join(where, '.gitignore');
+/**
+ * Returns a list of files in the directory that have any of the file extensions passed to the function
+ *
+ * @param directory - the directory of the workspace you want to scan
+ * @param fileExtensions - a list of file extensions to look for in the directory
+ * @param ignoreNodeModules - an optional boolean that determines whether to ignore the "node_modules" folder, Defaults to true
+ */
+function listRelevantFiles(directory, fileExtensions, ignoreNodeModules = true) {
+    const ignoreFilePath = path.join(directory, '.gitignore');
     let ignoreRules = fs.existsSync(ignoreFilePath)
         ? (0, ignore_1.default)().add(fs.readFileSync(ignoreFilePath, 'utf8'))
         : (0, ignore_1.default)();
     ignoreRules = ignoreNodeModules ? ignoreRules.add("node_modules") : ignoreRules;
     const options = {
-        cwd: where,
+        cwd: directory,
         absolute: true,
     };
     const files = fileExtensions.flatMap((ext) => glob.sync(`**/*${ext}`, options));
@@ -64,6 +74,19 @@ function listRelevantFiles(where, fileExtensions, ignoreNodeModules = true) {
     console.log(`Found ${filteredWithIgnore.length} files:`);
     return filteredWithIgnore;
 }
+/**
+ * Converts a list of file paths to a dictionary/object that has it's keys as file extensions and it's values as the file paths
+ *
+ * @example
+ * const fileDict = convertFileListToDictionary(["C:\\a.js", "C:\\b.jsx"])
+ * console.log(fileDict)
+ * //{
+ * // '.js': ["C:\\a.js"], '.jsx': ["C:\\b.jsx"]
+ * //}
+ *
+ * @param fileList
+ * @returns
+ */
 function convertFileListToDictionary(fileList) {
     const files = {};
     fileList.forEach(file => {
@@ -74,6 +97,10 @@ function convertFileListToDictionary(fileList) {
     });
     return files;
 }
+/**
+ * Returns a list of image paths references in a html file
+ * @param file path to a html file
+ */
 function findImagesInHTML(file) {
     //TODO: add support for images loaded through prefetching; i.e. <link href="image.jpeg" />
     const html = fs.readFileSync(file, 'utf8');
@@ -90,10 +117,15 @@ function findImagesInHTML(file) {
     }).get();
     return imageSources;
 }
+/**
+ * Returns a dictionary of image references
+ * //more details to come
+ * @param files - an object/dictionary that has it's keys as file extensions and it's values as the file paths
+ * @returns
+ */
 function buildImageReferenceDictionary(files) {
     var _a;
     const imageReferencesFromFiles = {};
-    // if (files['.html']) {
     (_a = files['.html']) === null || _a === void 0 ? void 0 : _a.forEach(file => {
         imageReferencesFromFiles[file] = findImagesInHTML(file);
     });
