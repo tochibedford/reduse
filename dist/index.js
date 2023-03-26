@@ -196,6 +196,7 @@ function replaceInHTML(pathToFile, conversionMap) {
     fs_1.default.writeFileSync(pathToFile, $.html());
 }
 function main() {
+    var _a;
     const { workspaceDir, format, fixImports } = getCommandLineArguments();
     if (!Object.keys(sharp_1.default.format).includes(format)) {
         throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`);
@@ -208,9 +209,9 @@ function main() {
     }
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
-    if (files['.html']) {
-        replaceInHTML(files['.html'][0], conversionMap);
-    }
+    (_a = files['.html']) === null || _a === void 0 ? void 0 : _a.forEach(htmlFile => {
+        replaceInHTML(htmlFile, conversionMap);
+    });
 }
 main();
 //# sourceMappingURL=index.js.map

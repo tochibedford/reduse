@@ -201,9 +201,9 @@ function main() {
 
     const files = convertFileListToDictionary(fileList)
 
-    if (files['.html']) {
-        replaceInHTML(files['.html'][0], conversionMap)
-    }
+    files['.html']?.forEach(htmlFile => {
+        replaceInHTML(htmlFile, conversionMap)
+    })
 }
 
 main()
