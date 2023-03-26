@@ -163,10 +163,55 @@ function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof shar
     return conversionMap
 }
 
+function replaceInFile(pathToFile: string, conversionMap: {
+    [key: string]: string
+}) {
+    const file = fs.readFileSync(pathToFile, 'utf8')
+
+    return function (replacer: (file: string, conversion: typeof conversionMap, pathToFile: string) => string) {
+        const modifiedFile = replacer(file, conversionMap, pathToFile)
+        fs.writeFileSync(pathToFile, modifiedFile)
+    }
+}
+
+function htmlReplacer(file: string, conversionMap: { [key: string]: string }, pathToFile: string) {
+    const $ = cheerio.load(file, null, true)
+
+    $('img').toArray().forEach(el => {
+        const source = $(el).attr('src')
+        if (source) {
+            $(el).attr('src', path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)]))
+        }
+    })
+
+    return $.html()
+}
+
+function cssReplacer(file: string, conversionMap: { [key: string]: string }, pathToFile: string) {
+    const ast = csstree.parse(file)
+
+    csstree.walk(ast, (node) => {
+        if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
+            csstree.walk(node.value, {
+                visit: "Url",
+                enter: (urlNode) => {
+                    const source = urlNode.value;
+                    const newPath = path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)])
+                    urlNode.value = newPath;
+                }
+            })
+        }
+    })
+
+    return csstree.generate(ast);
+}
+
 /**
  * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
  * @param pathToFile - string representing absolute path to html file
  * @param conversionMap - conversion map object that holds information on input and output images
+ * 
+ * @deprecated
  */
 function replaceInHTML(pathToFile: string, conversionMap: {
     [key: string]: string
@@ -183,28 +228,6 @@ function replaceInHTML(pathToFile: string, conversionMap: {
     fs.writeFileSync(pathToFile, $.html())
 }
 
-function replaceInCSS(pathToFile: string, conversionMap: {
-    [key: string]: string
-}) {
-    const cssFile = fs.readFileSync(pathToFile, 'utf-8')
-    const ast = csstree.parse(cssFile)
-
-    csstree.walk(ast, (node) => {
-        if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
-            csstree.walk(node.value, {
-                visit: "Url",
-                enter: (urlNode) => {
-                    const source = urlNode.value;
-                    const newPath = path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)])
-                    urlNode.value = newPath;
-                }
-            })
-        }
-    })
-
-    const newCss = csstree.generate(ast);
-    fs.writeFileSync(pathToFile, newCss);
-}
 
 function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments()
@@ -229,12 +252,12 @@ function main() {
         switch (key) {
             case ".html":
                 value.forEach(file => {
-                    replaceInHTML(file, conversionMap)
+                    replaceInFile(file, conversionMap)(htmlReplacer)
                 })
                 break;
             case ".css":
                 value.forEach(file => {
-                    replaceInCSS(file, conversionMap)
+                    replaceInFile(file, conversionMap)(cssReplacer)
                 })
                 break;
             default:

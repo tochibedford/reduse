@@ -180,25 +180,25 @@ function convertImagesInDirectory(workspaceDir, outputFormat) {
     });
     return conversionMap;
 }
-/**
- * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
- * @param pathToFile - string representing absolute path to html file
- * @param conversionMap - conversion map object that holds information on input and output images
- */
-function replaceInHTML(pathToFile, conversionMap) {
-    const html = fs_1.default.readFileSync(pathToFile, 'utf8');
-    const $ = cheerio.load(html, null, true);
+function replaceInFile(pathToFile, conversionMap) {
+    const file = fs_1.default.readFileSync(pathToFile, 'utf8');
+    return function (replacer) {
+        const modifiedFile = replacer(file, conversionMap, pathToFile);
+        fs_1.default.writeFileSync(pathToFile, modifiedFile);
+    };
+}
+function htmlReplacer(file, conversionMap, pathToFile) {
+    const $ = cheerio.load(file, null, true);
     $('img').toArray().forEach(el => {
         const source = $(el).attr('src');
         if (source) {
             $(el).attr('src', path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), source)]));
         }
     });
-    fs_1.default.writeFileSync(pathToFile, $.html());
+    return $.html();
 }
-function replaceInCSS(pathToFile, conversionMap) {
-    const cssFile = fs_1.default.readFileSync(pathToFile, 'utf-8');
-    const ast = css_tree_1.default.parse(cssFile);
+function cssReplacer(file, conversionMap, pathToFile) {
+    const ast = css_tree_1.default.parse(file);
     css_tree_1.default.walk(ast, (node) => {
         if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
             css_tree_1.default.walk(node.value, {
@@ -211,8 +211,25 @@ function replaceInCSS(pathToFile, conversionMap) {
             });
         }
     });
-    const newCss = css_tree_1.default.generate(ast);
-    fs_1.default.writeFileSync(pathToFile, newCss);
+    return css_tree_1.default.generate(ast);
+}
+/**
+ * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
+ * @param pathToFile - string representing absolute path to html file
+ * @param conversionMap - conversion map object that holds information on input and output images
+ *
+ * @deprecated
+ */
+function replaceInHTML(pathToFile, conversionMap) {
+    const html = fs_1.default.readFileSync(pathToFile, 'utf8');
+    const $ = cheerio.load(html, null, true);
+    $('img').toArray().forEach(el => {
+        const source = $(el).attr('src');
+        if (source) {
+            $(el).attr('src', path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), source)]));
+        }
+    });
+    fs_1.default.writeFileSync(pathToFile, $.html());
 }
 function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments();
@@ -231,12 +248,12 @@ function main() {
         switch (key) {
             case ".html":
                 value.forEach(file => {
-                    replaceInHTML(file, conversionMap);
+                    replaceInFile(file, conversionMap)(htmlReplacer);
                 });
                 break;
             case ".css":
                 value.forEach(file => {
-                    replaceInCSS(file, conversionMap);
+                    replaceInFile(file, conversionMap)(cssReplacer);
                 });
                 break;
             default:
