@@ -42,6 +42,7 @@ const sharp_1 = __importDefault(require("sharp"));
 const ignore_1 = __importDefault(require("ignore"));
 const minimist_1 = __importDefault(require("minimist"));
 const cheerio = __importStar(require("cheerio"));
+const css_tree_1 = __importDefault(require("css-tree"));
 const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
@@ -195,8 +196,25 @@ function replaceInHTML(pathToFile, conversionMap) {
     });
     fs_1.default.writeFileSync(pathToFile, $.html());
 }
+function replaceInCSS(pathToFile, conversionMap) {
+    const cssFile = fs_1.default.readFileSync(pathToFile, 'utf-8');
+    const ast = css_tree_1.default.parse(cssFile);
+    css_tree_1.default.walk(ast, (node) => {
+        if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
+            css_tree_1.default.walk(node.value, {
+                visit: "Url",
+                enter: (urlNode) => {
+                    const source = urlNode.value;
+                    const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), source)]);
+                    urlNode.value = newPath;
+                }
+            });
+        }
+    });
+    const newCss = css_tree_1.default.generate(ast);
+    fs_1.default.writeFileSync(pathToFile, newCss);
+}
 function main() {
-    var _a;
     const { workspaceDir, format, fixImports } = getCommandLineArguments();
     if (!Object.keys(sharp_1.default.format).includes(format)) {
         throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`);
@@ -209,9 +227,34 @@ function main() {
     }
     const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
     const files = convertFileListToDictionary(fileList);
-    (_a = files['.html']) === null || _a === void 0 ? void 0 : _a.forEach(htmlFile => {
-        replaceInHTML(htmlFile, conversionMap);
+    Object.entries(files).forEach(([key, value]) => {
+        switch (key) {
+            case ".html":
+                value.forEach(file => {
+                    replaceInHTML(file, conversionMap);
+                });
+                break;
+            case ".css":
+                value.forEach(file => {
+                    replaceInCSS(file, conversionMap);
+                });
+                break;
+            default:
+                console.log(`No support for ${key} files just yet`);
+                break;
+        }
     });
 }
 main();
+/**
+ * Currently a Type error occurs when a file points to a non-existent image reference in html (e.g a deleted image or broken link of some sort):
+ * throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+   ^
+    TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+
+    It's very undescriptive and unexplanatory and it's a headache to have to figure it out each time it happens, //TODO: maybe create a try catch here?
+
+    A good idea would be to try catch for this during image conversion instead of in the replace html stage.
+ *
+ */
 //# sourceMappingURL=index.js.map

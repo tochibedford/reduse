@@ -5,6 +5,7 @@ import sharp from 'sharp'
 import ignore from 'ignore'
 import minimist from 'minimist'
 import * as cheerio from 'cheerio'
+import csstree from 'css-tree'
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
@@ -168,7 +169,7 @@ function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof shar
  * @param conversionMap - conversion map object that holds information on input and output images
  */
 function replaceInHTML(pathToFile: string, conversionMap: {
-    [key: string]: string;
+    [key: string]: string
 }) {
     const html = fs.readFileSync(pathToFile, 'utf8')
     const $ = cheerio.load(html, null, true)
@@ -179,7 +180,30 @@ function replaceInHTML(pathToFile: string, conversionMap: {
             $(el).attr('src', path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)]))
         }
     })
-    fs.writeFileSync(pathToFile, $.html());
+    fs.writeFileSync(pathToFile, $.html())
+}
+
+function replaceInCSS(pathToFile: string, conversionMap: {
+    [key: string]: string
+}) {
+    const cssFile = fs.readFileSync(pathToFile, 'utf-8')
+    const ast = csstree.parse(cssFile)
+
+    csstree.walk(ast, (node) => {
+        if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
+            csstree.walk(node.value, {
+                visit: "Url",
+                enter: (urlNode) => {
+                    const source = urlNode.value;
+                    const newPath = path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)])
+                    urlNode.value = newPath;
+                }
+            })
+        }
+    })
+
+    const newCss = csstree.generate(ast);
+    fs.writeFileSync(pathToFile, newCss);
 }
 
 function main() {
@@ -201,9 +225,35 @@ function main() {
 
     const files = convertFileListToDictionary(fileList)
 
-    files['.html']?.forEach(htmlFile => {
-        replaceInHTML(htmlFile, conversionMap)
+    Object.entries(files).forEach(([key, value]) => {
+        switch (key) {
+            case ".html":
+                value.forEach(file => {
+                    replaceInHTML(file, conversionMap)
+                })
+                break;
+            case ".css":
+                value.forEach(file => {
+                    replaceInCSS(file, conversionMap)
+                })
+                break;
+            default:
+                console.log(`No support for ${key} files just yet`)
+                break;
+        }
     })
 }
 
 main()
+
+/**
+ * Currently a Type error occurs when a file points to a non-existent image reference in html (e.g a deleted image or broken link of some sort): 
+ * throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+   ^
+    TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
+
+    It's very undescriptive and unexplanatory and it's a headache to have to figure it out each time it happens, //TODO: maybe create a try catch here?
+
+    A good idea would be to try catch for this during image conversion instead of in the replace html stage.
+ * 
+ */
