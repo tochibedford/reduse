@@ -180,15 +180,29 @@ function convertImagesInDirectory(workspaceDir, outputFormat) {
     });
     return conversionMap;
 }
+/**
+ * Opens a file to be passed and returns a function that accepts a replacer (html, css, scss, js, jsx, ts, tsx).
+ * Passing a replacer to the returned function replaces image references in the opened file then writes a modified file.
+ * @param pathToFile
+ * @param conversionMap
+ * @returns
+ */
 function replaceInFile(pathToFile, conversionMap) {
-    const file = fs_1.default.readFileSync(pathToFile, 'utf8');
+    const fileString = fs_1.default.readFileSync(pathToFile, 'utf8');
     return function (replacer) {
-        const modifiedFile = replacer(file, conversionMap, pathToFile);
+        const modifiedFile = replacer(fileString, conversionMap, pathToFile);
         fs_1.default.writeFileSync(pathToFile, modifiedFile);
     };
 }
-function htmlReplacer(file, conversionMap, pathToFile) {
-    const $ = cheerio.load(file, null, true);
+/**
+ * Returns a converted html file. It parses a html file looking for references to images,
+ * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
+ * @param fileString - string contents of the file to be parsed
+ * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
+ * @param pathToFile - path to file to be parsed
+ */
+function htmlReplacer(fileString, conversionMap, pathToFile) {
+    const $ = cheerio.load(fileString, null, true);
     $('img').toArray().forEach(el => {
         const source = $(el).attr('src');
         if (source) {
@@ -197,6 +211,13 @@ function htmlReplacer(file, conversionMap, pathToFile) {
     });
     return $.html();
 }
+/**
+ * Returns a converted css file. It parses a css file looking for references to images,
+ * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
+ * @param fileString - string contents of the file to be parsed
+ * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
+ * @param pathToFile - path to file to be parsed
+ */
 function cssReplacer(file, conversionMap, pathToFile) {
     const ast = css_tree_1.default.parse(file);
     css_tree_1.default.walk(ast, (node) => {
@@ -212,24 +233,6 @@ function cssReplacer(file, conversionMap, pathToFile) {
         }
     });
     return css_tree_1.default.generate(ast);
-}
-/**
- * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
- * @param pathToFile - string representing absolute path to html file
- * @param conversionMap - conversion map object that holds information on input and output images
- *
- * @deprecated
- */
-function replaceInHTML(pathToFile, conversionMap) {
-    const html = fs_1.default.readFileSync(pathToFile, 'utf8');
-    const $ = cheerio.load(html, null, true);
-    $('img').toArray().forEach(el => {
-        const source = $(el).attr('src');
-        if (source) {
-            $(el).attr('src', path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), source)]));
-        }
-    });
-    fs_1.default.writeFileSync(pathToFile, $.html());
 }
 function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments();

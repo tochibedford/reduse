@@ -163,19 +163,33 @@ function convertImagesInDirectory(workspaceDir: string, outputFormat: keyof shar
     return conversionMap
 }
 
+/**
+ * Opens a file to be passed and returns a function that accepts a replacer (html, css, scss, js, jsx, ts, tsx). 
+ * Passing a replacer to the returned function replaces image references in the opened file then writes a modified file.
+ * @param pathToFile 
+ * @param conversionMap 
+ * @returns 
+ */
 function replaceInFile(pathToFile: string, conversionMap: {
     [key: string]: string
 }) {
-    const file = fs.readFileSync(pathToFile, 'utf8')
+    const fileString = fs.readFileSync(pathToFile, 'utf8')
 
-    return function (replacer: (file: string, conversion: typeof conversionMap, pathToFile: string) => string) {
-        const modifiedFile = replacer(file, conversionMap, pathToFile)
+    return function (replacer: (fileString: string, conversion: typeof conversionMap, pathToFile: string) => string) {
+        const modifiedFile = replacer(fileString, conversionMap, pathToFile)
         fs.writeFileSync(pathToFile, modifiedFile)
     }
 }
 
-function htmlReplacer(file: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const $ = cheerio.load(file, null, true)
+/**
+ * Returns a converted html file. It parses a html file looking for references to images, 
+ * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
+ * @param fileString - string contents of the file to be parsed
+ * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
+ * @param pathToFile - path to file to be parsed
+ */
+function htmlReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
+    const $ = cheerio.load(fileString, null, true)
 
     $('img').toArray().forEach(el => {
         const source = $(el).attr('src')
@@ -187,6 +201,13 @@ function htmlReplacer(file: string, conversionMap: { [key: string]: string }, pa
     return $.html()
 }
 
+/**
+ * Returns a converted css file. It parses a css file looking for references to images, 
+ * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
+ * @param fileString - string contents of the file to be parsed
+ * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
+ * @param pathToFile - path to file to be parsed
+ */
 function cssReplacer(file: string, conversionMap: { [key: string]: string }, pathToFile: string) {
     const ast = csstree.parse(file)
 
@@ -205,29 +226,6 @@ function cssReplacer(file: string, conversionMap: { [key: string]: string }, pat
 
     return csstree.generate(ast);
 }
-
-/**
- * Parses a html file looking for references to images, and replaces those reference with references to new converted images gotten from the conversion Map
- * @param pathToFile - string representing absolute path to html file
- * @param conversionMap - conversion map object that holds information on input and output images
- * 
- * @deprecated
- */
-function replaceInHTML(pathToFile: string, conversionMap: {
-    [key: string]: string
-}) {
-    const html = fs.readFileSync(pathToFile, 'utf8')
-    const $ = cheerio.load(html, null, true)
-
-    $('img').toArray().forEach(el => {
-        const source = $(el).attr('src')
-        if (source) {
-            $(el).attr('src', path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)]))
-        }
-    })
-    fs.writeFileSync(pathToFile, $.html())
-}
-
 
 function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments()
