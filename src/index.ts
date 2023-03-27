@@ -3,9 +3,9 @@ import path from 'path'
 import glob from 'glob'
 import sharp from 'sharp'
 import ignore from 'ignore'
+import csstree from 'css-tree'
 import minimist from 'minimist'
 import * as cheerio from 'cheerio'
-import csstree from 'css-tree'
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
@@ -208,8 +208,8 @@ function htmlReplacer(fileString: string, conversionMap: { [key: string]: string
  * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
  * @param pathToFile - path to file to be parsed
  */
-function cssReplacer(file: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const ast = csstree.parse(file)
+function cssReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
+    const ast = csstree.parse(fileString)
 
     csstree.walk(ast, (node) => {
         if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
@@ -225,6 +225,23 @@ function cssReplacer(file: string, conversionMap: { [key: string]: string }, pat
     })
 
     return csstree.generate(ast);
+}
+
+function scssReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
+    const regex = /(?<=url\()[^)]+(?=\))/g; // a regex string to match url("a.jpg") or url(a.jpg) but alwaysreturn everything inside the parentheses(i.e "a.jpg" and a.jpg)
+    const output = fileString.replace(regex, (match, _) => {
+        const stringStartEnd = [0, match.length]
+        if (match.endsWith('"') || match.endsWith("'")) {
+            stringStartEnd[1] -= 1
+        }
+        if (match.startsWith('"') || match.startsWith("'")) {
+            stringStartEnd[0] += 1
+        }
+        match = match.slice(...stringStartEnd)
+        const newPath = path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), match)])
+        return `"${newPath}"`
+    });
+    return output
 }
 
 function main() {
@@ -255,7 +272,12 @@ function main() {
                 break;
             case ".css":
                 value.forEach(file => {
-                    replaceInFile(file, conversionMap)(cssReplacer)
+                    replaceInFile(file, conversionMap)(scssReplacer)
+                })
+                break;
+            case ".scss":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(scssReplacer)
                 })
                 break;
             default:

@@ -40,9 +40,9 @@ const path_1 = __importDefault(require("path"));
 const glob_1 = __importDefault(require("glob"));
 const sharp_1 = __importDefault(require("sharp"));
 const ignore_1 = __importDefault(require("ignore"));
+const css_tree_1 = __importDefault(require("css-tree"));
 const minimist_1 = __importDefault(require("minimist"));
 const cheerio = __importStar(require("cheerio"));
-const css_tree_1 = __importDefault(require("css-tree"));
 const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
@@ -218,8 +218,8 @@ function htmlReplacer(fileString, conversionMap, pathToFile) {
  * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
  * @param pathToFile - path to file to be parsed
  */
-function cssReplacer(file, conversionMap, pathToFile) {
-    const ast = css_tree_1.default.parse(file);
+function cssReplacer(fileString, conversionMap, pathToFile) {
+    const ast = css_tree_1.default.parse(fileString);
     css_tree_1.default.walk(ast, (node) => {
         if (node.type === 'Declaration' && (node.property === 'background-image' || node.property === 'background')) {
             css_tree_1.default.walk(node.value, {
@@ -233,6 +233,22 @@ function cssReplacer(file, conversionMap, pathToFile) {
         }
     });
     return css_tree_1.default.generate(ast);
+}
+function scssReplacer(fileString, conversionMap, pathToFile) {
+    const regex = /(?<=url\()[^)]+(?=\))/g; // a regex string to match url("a.jpg") or url(a.jpg) but alwaysreturn everything inside the parentheses(i.e "a.jpg" and a.jpg)
+    const output = fileString.replace(regex, (match, _) => {
+        const stringStartEnd = [0, match.length];
+        if (match.endsWith('"') || match.endsWith("'")) {
+            stringStartEnd[1] -= 1;
+        }
+        if (match.startsWith('"') || match.startsWith("'")) {
+            stringStartEnd[0] += 1;
+        }
+        match = match.slice(...stringStartEnd);
+        const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)]);
+        return `"${newPath}"`;
+    });
+    return output;
 }
 function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments();
@@ -256,7 +272,12 @@ function main() {
                 break;
             case ".css":
                 value.forEach(file => {
-                    replaceInFile(file, conversionMap)(cssReplacer);
+                    replaceInFile(file, conversionMap)(scssReplacer);
+                });
+                break;
+            case ".scss":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(scssReplacer);
                 });
                 break;
             default:
