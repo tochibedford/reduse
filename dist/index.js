@@ -236,17 +236,23 @@ function cssReplacer(fileString, conversionMap, pathToFile) {
 }
 function scssReplacer(fileString, conversionMap, pathToFile) {
     const regex = /(?<=url\()[^)]+(?=\))/g; // a regex string to match url("a.jpg") or url(a.jpg) but alwaysreturn everything inside the parentheses(i.e "a.jpg" and a.jpg)
-    const output = fileString.replace(regex, (match, _) => {
-        const stringStartEnd = [0, match.length];
-        if (match.endsWith('"') || match.endsWith("'")) {
+    const output = fileString.replace(regex, (originalMatch, _) => {
+        const stringStartEnd = [0, originalMatch.length];
+        if (originalMatch.endsWith('"') || originalMatch.endsWith("'")) {
             stringStartEnd[1] -= 1;
         }
-        if (match.startsWith('"') || match.startsWith("'")) {
+        if (originalMatch.startsWith('"') || originalMatch.startsWith("'")) {
             stringStartEnd[0] += 1;
         }
-        match = match.slice(...stringStartEnd);
-        const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)]);
-        return `"${newPath}"`;
+        const match = originalMatch.slice(...stringStartEnd);
+        const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)];
+        if (conversion) {
+            const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion);
+            return `"${newPath}"`;
+        }
+        else {
+            return originalMatch;
+        }
     });
     return output;
 }
@@ -298,4 +304,7 @@ main();
     A good idea would be to try catch for this during image conversion instead of in the replace html stage.
  *
  */
+/**
+ * TODO: Convert html replacer to use regex replacing instead of Cheerio
+ */ 
 //# sourceMappingURL=index.js.map

@@ -10,4 +10,7 @@ export {};
     A good idea would be to try catch for this during image conversion instead of in the replace html stage.
  *
  */
+/**
+ * TODO: Convert html replacer to use regex replacing instead of Cheerio
+ */ 
 //# sourceMappingURL=index.d.ts.map
