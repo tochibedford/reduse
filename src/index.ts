@@ -210,7 +210,7 @@ function htmlOldReplacer(fileString: string, conversionMap: { [key: string]: str
  * @param pathToFile - path to file to be parsed
  */
 function htmlReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const regex = /(?<=<img.+)(?<=src=["']).*?(?=['"])/g
+    const regex = /(?<=<img.+)(?<=src=["']).+?(?=['"])/g
     const output = fileString.replace(regex, (match) => {
         const conversion = conversionMap[path.join(path.dirname(pathToFile), match)]
         if (conversion) {
