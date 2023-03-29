@@ -247,11 +247,25 @@ function scssReplacer(fileString, conversionMap, pathToFile) {
         const match = originalMatch.slice(...stringStartEnd);
         const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)];
         if (conversion) {
-            const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion);
+            const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion).replace("\\", "/");
             return `"${newPath}"`;
         }
         else {
             return originalMatch;
+        }
+    });
+    return output;
+}
+function jsReplacer(fileString, conversionMap, pathToFile) {
+    const regex = /from\s+(?:(?:'([^']*)')|(?:"([^"]*)"))/g;
+    const output = fileString.replace(regex, (match, ...group) => {
+        const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), group[1])];
+        if (conversion) {
+            const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion).replace("\\", "/");
+            return `from "${newPath}"`;
+        }
+        else {
+            return match;
         }
     });
     return output;
@@ -284,6 +298,26 @@ function main() {
             case ".scss":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(scssReplacer);
+                });
+                break;
+            case ".js":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(jsReplacer);
+                });
+                break;
+            case ".jsx":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(jsReplacer);
+                });
+                break;
+            case ".ts":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(jsReplacer);
+                });
+                break;
+            case ".tsx":
+                value.forEach(file => {
+                    replaceInFile(file, conversionMap)(jsReplacer);
                 });
                 break;
             default:
