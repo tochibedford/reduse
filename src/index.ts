@@ -250,12 +250,12 @@ function scssReplacer(fileString: string, conversionMap: { [key: string]: string
 }
 
 function jsReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const regex = /from\s+(?:(?:'([^']*)')|(?:"([^"]*)"))/g
-    const output = fileString.replace(regex, (match, ...group: (string | number)[]) => {
-        const conversion = conversionMap[path.join(path.dirname(pathToFile), group[1] as string)]
+    const regex = /(?<=from.['"]).+(?=['"])/g
+    const output = fileString.replace(regex, (match, _) => {
+        const conversion = conversionMap[path.join(path.dirname(pathToFile), match)]
         if (conversion) {
             const newPath = path.relative(path.dirname(pathToFile), conversion).replace("\\", "/")
-            return `from "${newPath}"`
+            return `${newPath}`
         } else {
             return match
         }

@@ -257,12 +257,12 @@ function scssReplacer(fileString, conversionMap, pathToFile) {
     return output;
 }
 function jsReplacer(fileString, conversionMap, pathToFile) {
-    const regex = /from\s+(?:(?:'([^']*)')|(?:"([^"]*)"))/g;
-    const output = fileString.replace(regex, (match, ...group) => {
-        const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), group[1])];
+    const regex = /(?<=from.['"]).+(?=['"])/g;
+    const output = fileString.replace(regex, (match, _) => {
+        const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)];
         if (conversion) {
             const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion).replace("\\", "/");
-            return `from "${newPath}"`;
+            return `${newPath}`;
         }
         else {
             return match;
