@@ -200,8 +200,9 @@ function replaceInFile(pathToFile, conversionMap) {
  * @param fileString - string contents of the file to be parsed
  * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
  * @param pathToFile - path to file to be parsed
+ * @deprecated
  */
-function htmlReplacer(fileString, conversionMap, pathToFile) {
+function htmlOldReplacer(fileString, conversionMap, pathToFile) {
     const $ = cheerio.load(fileString, null, true);
     $('img').toArray().forEach(el => {
         const source = $(el).attr('src');
@@ -210,6 +211,27 @@ function htmlReplacer(fileString, conversionMap, pathToFile) {
         }
     });
     return $.html();
+}
+/**
+ * Returns a converted html file. It parses a html file looking for references to images,
+ * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
+ * @param fileString - string contents of the file to be parsed
+ * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
+ * @param pathToFile - path to file to be parsed
+ */
+function htmlReplacer(fileString, conversionMap, pathToFile) {
+    const regex = /(?<=<img.+)(?<=src=["']).*?(?=['"])/g;
+    const output = fileString.replace(regex, (match) => {
+        const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)];
+        if (conversion) {
+            const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion).replace("\\", "/");
+            return `${newPath}`;
+        }
+        else {
+            return match;
+        }
+    });
+    return output;
 }
 /**
  * Returns a converted css file. It parses a css file looking for references to images,
@@ -258,7 +280,7 @@ function scssReplacer(fileString, conversionMap, pathToFile) {
 }
 function jsReplacer(fileString, conversionMap, pathToFile) {
     const regex = /(?<=from.['"]).+(?=['"])/g;
-    const output = fileString.replace(regex, (match, _) => {
+    const output = fileString.replace(regex, (match) => {
         const conversion = conversionMap[path_1.default.join(path_1.default.dirname(pathToFile), match)];
         if (conversion) {
             const newPath = path_1.default.relative(path_1.default.dirname(pathToFile), conversion).replace("\\", "/");
@@ -338,7 +360,4 @@ main();
     A good idea would be to try catch for this during image conversion instead of in the replace html stage.
  *
  */
-/**
- * TODO: Convert html replacer to use regex replacing instead of Cheerio
- */ 
 //# sourceMappingURL=index.js.map
