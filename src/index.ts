@@ -13,26 +13,45 @@ import * as cheerio from 'cheerio'
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 
+function confirmDirectory(workspaceDir: string) {
+    if (!fs.existsSync(workspaceDir)) {
+        console.error(chalk.bgRed(`Directory "${chalk.bold.underline(workspaceDir)}" does not exist`))
+        return false
+    }
+
+    fs.stat(workspaceDir, (err, stats) => {
+        if (err) {
+            console.error(chalk.bgRed(err));
+            return;
+        }
+
+        if (stats.isFile()) {
+            console.log('This path is a file');
+            return false
+        } else if (stats.isDirectory()) {
+            return true
+        }
+    });
+
+
+}
+
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
-function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.FormatEnum, fixImports: boolean } {
+function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.FormatEnum, fixImports: boolean } | false {
     const args = minimist(process.argv.slice(2))
-
     const { _, f, fixImports } = args
+
     if (!args._[0]) {
         console.error(chalk.bgRed('Usage: node index.js <directory>'))
-        process.exit(1)
+        return false
     }
 
     const workspaceDir = path.resolve(_[0])
+    const directoryConfirmed = confirmDirectory(workspaceDir)
 
-    if (!fs.existsSync(workspaceDir)) {
-        console.error(chalk.bgRed(`Directory "${chalk.bold.underline(workspaceDir)}" does not exist`))
-        process.exit(1)
-    }
-
-    return { workspaceDir, format: f, fixImports }
+    return directoryConfirmed ? { workspaceDir, format: f, fixImports } : false
 }
 
 /**
@@ -288,12 +307,18 @@ function jsReplacer(fileString: string, conversionMap: { [key: string]: string }
     return output
 }
 
-async function main() {
-    const { workspaceDir, format, fixImports } = getCommandLineArguments()
+function main() {
+    const cmdArg = getCommandLineArguments()
+
+    if (!cmdArg) {
+        return
+    }
+
+    const { workspaceDir, format, fixImports } = cmdArg
 
     if (!Object.keys(sharp.format).includes(format)) {
         console.error(chalk.bold(chalk.white.bgRed(`You used ${format} for format.`)) + chalk.rgb(50, 200, 70)("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"))
-        process.exit(1)
+        return
     }
 
     const conversionMap = convertImagesInDirectory(workspaceDir, format)
