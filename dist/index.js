@@ -13,6 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getCommandLineArguments = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const glob_1 = __importDefault(require("glob"));
@@ -22,30 +23,38 @@ const ignore_1 = __importDefault(require("ignore"));
 const css_tree_1 = __importDefault(require("css-tree"));
 const minimist_1 = __importDefault(require("minimist"));
 const fileExtensions = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"];
+/**
+ * Confirms that workspaceDir is a Directory. Returns `true` if it is, and `false` if it isn't
+ * @param workspaceDir
+ */
 function confirmDirectory(workspaceDir) {
     if (!fs_1.default.existsSync(workspaceDir)) {
         console.error(chalk_1.default.bgRed(`Directory "${chalk_1.default.bold.underline(workspaceDir)}" does not exist`));
         return false;
     }
-    fs_1.default.stat(workspaceDir, (err, stats) => {
-        if (err) {
-            console.error(chalk_1.default.bgRed(err));
-            return;
-        }
-        if (stats.isFile()) {
-            console.log('This path is a file');
+    try {
+        const stat = fs_1.default.statSync(workspaceDir);
+        if (stat.isFile()) {
+            console.error(chalk_1.default.bgRed(`The path you provided: ${chalk_1.default.underline.bold(workspaceDir)} is a file.\nDirect file conversion is not supported yet`));
             return false;
         }
-        else if (stats.isDirectory()) {
+        else if (stat.isDirectory()) {
             return true;
         }
-    });
+        return true;
+    }
+    catch (err) {
+        if (err) {
+            console.error(chalk_1.default.bgRed(err));
+            return false;
+        }
+    }
 }
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
-function getCommandLineArguments() {
-    const args = (0, minimist_1.default)(process.argv.slice(2));
+function getCommandLineArguments(argsIn) {
+    const args = (0, minimist_1.default)(argsIn);
     const { _, f, fixImports } = args;
     if (!args._[0]) {
         console.error(chalk_1.default.bgRed('Usage: node index.js <directory>'));
@@ -53,8 +62,15 @@ function getCommandLineArguments() {
     }
     const workspaceDir = path_1.default.resolve(_[0]);
     const directoryConfirmed = confirmDirectory(workspaceDir);
-    return directoryConfirmed ? { workspaceDir, format: f, fixImports } : false;
+    if (directoryConfirmed) {
+        return { workspaceDir, format: f, fixImports };
+    }
+    else {
+        // console.error
+        return false;
+    }
 }
+exports.getCommandLineArguments = getCommandLineArguments;
 /**
  * Returns a list of files in the directory that have any of the file extensions passed to the function
  *
@@ -269,7 +285,7 @@ function jsReplacer(fileString, conversionMap, pathToFile) {
     return output;
 }
 function main() {
-    const cmdArg = getCommandLineArguments();
+    const cmdArg = getCommandLineArguments(process.argv.slice(2));
     if (!cmdArg) {
         return;
     }
@@ -332,7 +348,7 @@ function main() {
 main();
 /**
  * Currently a Type error occurs when a file points to a non-existent image reference in html (e.g a deleted image or broken link of some sort):
- * throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+ * throw new ERR_INVALID_ARG_TYPE(name, 'string', value)
    ^
     TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
 

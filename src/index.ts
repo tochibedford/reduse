@@ -12,34 +12,38 @@ import minimist from 'minimist'
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 
+/**
+ * Confirms that workspaceDir is a Directory. Returns `true` if it is, and `false` if it isn't
+ * @param workspaceDir 
+ */
 function confirmDirectory(workspaceDir: string) {
     if (!fs.existsSync(workspaceDir)) {
         console.error(chalk.bgRed(`Directory "${chalk.bold.underline(workspaceDir)}" does not exist`))
         return false
     }
 
-    fs.stat(workspaceDir, (err, stats) => {
-        if (err) {
-            console.error(chalk.bgRed(err));
-            return;
-        }
-
-        if (stats.isFile()) {
-            console.log('This path is a file');
+    try {
+        const stat = fs.statSync(workspaceDir)
+        if (stat.isFile()) {
+            console.error(chalk.bgRed(`The path you provided: ${chalk.underline.bold(workspaceDir)} is a file.\nDirect file conversion is not supported yet`))
             return false
-        } else if (stats.isDirectory()) {
+        } else if (stat.isDirectory()) {
             return true
         }
-    });
-
-
+        return true
+    } catch (err) {
+        if (err) {
+            console.error(chalk.bgRed(err))
+            return false
+        }
+    }
 }
 
 /**
  * @description Returns the workspace directory passed to the program via command-line and returns it
  */
-function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.FormatEnum, fixImports: boolean } | false {
-    const args = minimist(process.argv.slice(2))
+function getCommandLineArguments(argsIn: string[]): { workspaceDir: string, format: keyof sharp.FormatEnum, fixImports: boolean } | false {
+    const args = minimist(argsIn)
     const { _, f, fixImports } = args
 
     if (!args._[0]) {
@@ -50,7 +54,13 @@ function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.
     const workspaceDir = path.resolve(_[0])
     const directoryConfirmed = confirmDirectory(workspaceDir)
 
-    return directoryConfirmed ? { workspaceDir, format: f, fixImports } : false
+    if (directoryConfirmed) {
+        return { workspaceDir, format: f, fixImports }
+    }
+    else {
+        // console.error
+        return false
+    }
 }
 
 /**
@@ -219,7 +229,7 @@ function htmlReplacer(fileString: string, conversionMap: { [key: string]: string
         } else {
             return match
         }
-    });
+    })
     return output
 }
 
@@ -238,19 +248,19 @@ function cssReplacer(fileString: string, conversionMap: { [key: string]: string 
             csstree.walk(node.value, {
                 visit: "Url",
                 enter: (urlNode) => {
-                    const source = urlNode.value;
+                    const source = urlNode.value
                     const newPath = path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)])
-                    urlNode.value = newPath;
+                    urlNode.value = newPath
                 }
             })
         }
     })
 
-    return csstree.generate(ast);
+    return csstree.generate(ast)
 }
 
 function scssReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const regex = /(?<=url\()[^)]+(?=\))/g; // a regex string to match url("a.jpg") or url(a.jpg) but alwaysreturn everything inside the parentheses(i.e "a.jpg" and a.jpg)
+    const regex = /(?<=url\()[^)]+(?=\))/g // a regex string to match url("a.jpg") or url(a.jpg) but alwaysreturn everything inside the parentheses(i.e "a.jpg" and a.jpg)
     const output = fileString.replace(regex, (originalMatch, _) => {
         const stringStartEnd = [0, originalMatch.length]
         if (originalMatch.endsWith('"') || originalMatch.endsWith("'")) {
@@ -267,7 +277,7 @@ function scssReplacer(fileString: string, conversionMap: { [key: string]: string
         } else {
             return originalMatch
         }
-    });
+    })
     return output
 }
 
@@ -281,19 +291,18 @@ function jsReplacer(fileString: string, conversionMap: { [key: string]: string }
         } else {
             return match
         }
-    });
+    })
     return output
 }
 
 function main() {
-    const cmdArg = getCommandLineArguments()
+    const cmdArg = getCommandLineArguments(process.argv.slice(2))
 
     if (!cmdArg) {
         return
     }
 
     const { workspaceDir, format, fixImports } = cmdArg
-
     if (!Object.keys(sharp.format).includes(format)) {
         console.error(chalk.bold(chalk.white.bgRed(`You used ${format} for format.`)) + chalk.rgb(50, 200, 70)("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"))
         return
@@ -317,49 +326,51 @@ function main() {
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(htmlReplacer)
                 })
-                break;
+                break
             case ".css":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(scssReplacer)
                 })
-                break;
+                break
             case ".scss":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(scssReplacer)
                 })
-                break;
+                break
             case ".js":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(jsReplacer)
                 })
-                break;
+                break
             case ".jsx":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(jsReplacer)
                 })
-                break;
+                break
             case ".ts":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(jsReplacer)
                 })
-                break;
+                break
             case ".tsx":
                 value.forEach(file => {
                     replaceInFile(file, conversionMap)(jsReplacer)
                 })
-                break;
+                break
             default:
                 console.log(`No support for ${key} files just yet`)
-                break;
+                break
         }
     })
 }
 
 main()
 
+export { getCommandLineArguments }
+
 /**
  * Currently a Type error occurs when a file points to a non-existent image reference in html (e.g a deleted image or broken link of some sort): 
- * throw new ERR_INVALID_ARG_TYPE(name, 'string', value);
+ * throw new ERR_INVALID_ARG_TYPE(name, 'string', value)
    ^
     TypeError [ERR_INVALID_ARG_TYPE]: The "to" argument must be of type string. Received undefined
 

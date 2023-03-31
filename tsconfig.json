@@ -18,5 +18,5 @@
     "declarationDir": "dist",
     "declarationMap": true
   },
-  "exclude": ["dist"]
+  "exclude": ["dist", "**/__tests__/*.test.ts"]
 }
