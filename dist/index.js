@@ -66,7 +66,6 @@ function getCommandLineArguments(argsIn) {
         return { workspaceDir, format: f, fixImports };
     }
     else {
-        // console.error
         return false;
     }
 }
