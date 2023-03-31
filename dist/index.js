@@ -53,12 +53,12 @@ function getCommandLineArguments() {
     const args = (0, minimist_1.default)(process.argv.slice(2));
     const { _, f, fixImports } = args;
     if (!args._[0]) {
-        console.error('Usage: node index.js <directory>');
+        console.error(chalk_1.default.bgRed('Usage: node index.js <directory>'));
         process.exit(1);
     }
     const workspaceDir = path_1.default.resolve(_[0]);
     if (!fs_1.default.existsSync(workspaceDir)) {
-        console.error(`Directory "${workspaceDir}" does not exist`);
+        console.error(chalk_1.default.bgRed(`Directory "${chalk_1.default.bold.underline(workspaceDir)}" does not exist`));
         process.exit(1);
     }
     return { workspaceDir, format: f, fixImports };
@@ -298,7 +298,8 @@ function main() {
     return __awaiter(this, void 0, void 0, function* () {
         const { workspaceDir, format, fixImports } = getCommandLineArguments();
         if (!Object.keys(sharp_1.default.format).includes(format)) {
-            throw Error(chalk_1.default.bold(chalk_1.default.red(`You used ${format} for format.`)) + chalk_1.default.green("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"));
+            console.error(chalk_1.default.bold(chalk_1.default.white.bgRed(`You used ${format} for format.`)) + chalk_1.default.rgb(50, 200, 70)("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"));
+            process.exit(1);
         }
         const conversionMap = convertImagesInDirectory(workspaceDir, format);
         console.log(`Converted ${Object.keys(conversionMap).length} images (See conversion map below): `);

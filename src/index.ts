@@ -21,14 +21,14 @@ function getCommandLineArguments(): { workspaceDir: string, format: keyof sharp.
 
     const { _, f, fixImports } = args
     if (!args._[0]) {
-        console.error('Usage: node index.js <directory>')
+        console.error(chalk.bgRed('Usage: node index.js <directory>'))
         process.exit(1)
     }
 
     const workspaceDir = path.resolve(_[0])
 
     if (!fs.existsSync(workspaceDir)) {
-        console.error(`Directory "${workspaceDir}" does not exist`)
+        console.error(chalk.bgRed(`Directory "${chalk.bold.underline(workspaceDir)}" does not exist`))
         process.exit(1)
     }
 
@@ -292,7 +292,8 @@ async function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments()
 
     if (!Object.keys(sharp.format).includes(format)) {
-        throw Error(chalk.bold(chalk.red(`You used ${format} for format.`)) + chalk.green("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"))
+        console.error(chalk.bold(chalk.white.bgRed(`You used ${format} for format.`)) + chalk.rgb(50, 200, 70)("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"))
+        process.exit(1)
     }
 
     const conversionMap = convertImagesInDirectory(workspaceDir, format)
