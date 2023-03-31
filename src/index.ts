@@ -1,7 +1,10 @@
+#!/usr/bin/env node
+
 import fs from 'fs'
 import path from 'path'
 import glob from 'glob'
 import sharp from 'sharp'
+import chalk from 'chalk'
 import ignore from 'ignore'
 import csstree from 'css-tree'
 import minimist from 'minimist'
@@ -285,11 +288,11 @@ function jsReplacer(fileString: string, conversionMap: { [key: string]: string }
     return output
 }
 
-function main() {
+async function main() {
     const { workspaceDir, format, fixImports } = getCommandLineArguments()
 
     if (!Object.keys(sharp.format).includes(format)) {
-        throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`)
+        throw Error(chalk.bold(chalk.red(`You used ${format} for format.`)) + chalk.green("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"))
     }
 
     const conversionMap = convertImagesInDirectory(workspaceDir, format)

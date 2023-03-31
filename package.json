@@ -3,6 +3,9 @@
   "version": "0.0.1",
   "description": "converts image files to a specific format in a project and or compresses them in the process",
   "main": "dist/index.js",
+  "bin": {
+    "reduse": "./dist/index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -12,6 +15,7 @@
     "@types/micromatch": "^4.0.2",
     "@types/minimist": "^1.2.2",
     "@types/parse-gitignore": "^1.0.0",
+    "chalk": "^4.1.2",
     "cheerio": "^1.0.0-rc.12",
     "css-tree": "^2.3.1",
     "glob": "^9.3.2",

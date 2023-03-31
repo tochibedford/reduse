@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 "use strict";
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
@@ -39,6 +40,7 @@ const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const glob_1 = __importDefault(require("glob"));
 const sharp_1 = __importDefault(require("sharp"));
+const chalk_1 = __importDefault(require("chalk"));
 const ignore_1 = __importDefault(require("ignore"));
 const css_tree_1 = __importDefault(require("css-tree"));
 const minimist_1 = __importDefault(require("minimist"));
@@ -293,59 +295,61 @@ function jsReplacer(fileString, conversionMap, pathToFile) {
     return output;
 }
 function main() {
-    const { workspaceDir, format, fixImports } = getCommandLineArguments();
-    if (!Object.keys(sharp_1.default.format).includes(format)) {
-        throw Error(`You used "${format}" for format. \n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl`);
-    }
-    const conversionMap = convertImagesInDirectory(workspaceDir, format);
-    console.log(`Converted ${Object.keys(conversionMap).length} images (See conversion map below): `);
-    console.log(conversionMap);
-    if (!fixImports) {
-        return;
-    }
-    const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
-    const files = convertFileListToDictionary(fileList);
-    Object.entries(files).forEach(([key, value]) => {
-        switch (key) {
-            case ".html":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(htmlReplacer);
-                });
-                break;
-            case ".css":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(scssReplacer);
-                });
-                break;
-            case ".scss":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(scssReplacer);
-                });
-                break;
-            case ".js":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(jsReplacer);
-                });
-                break;
-            case ".jsx":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(jsReplacer);
-                });
-                break;
-            case ".ts":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(jsReplacer);
-                });
-                break;
-            case ".tsx":
-                value.forEach(file => {
-                    replaceInFile(file, conversionMap)(jsReplacer);
-                });
-                break;
-            default:
-                console.log(`No support for ${key} files just yet`);
-                break;
+    return __awaiter(this, void 0, void 0, function* () {
+        const { workspaceDir, format, fixImports } = getCommandLineArguments();
+        if (!Object.keys(sharp_1.default.format).includes(format)) {
+            throw Error(chalk_1.default.bold(chalk_1.default.red(`You used ${format} for format.`)) + chalk_1.default.green("\n Use one of the following formats instead: \n  heic, heif, avif, jpeg, jpg, jpe, tile, dz, png, raw, tiff, tif, webp, gif, jp2, jpx, j2k, j2c, jxl"));
         }
+        const conversionMap = convertImagesInDirectory(workspaceDir, format);
+        console.log(`Converted ${Object.keys(conversionMap).length} images (See conversion map below): `);
+        console.log(conversionMap);
+        if (!fixImports) {
+            return;
+        }
+        const fileList = listRelevantFiles(workspaceDir, [...fileExtensions]);
+        const files = convertFileListToDictionary(fileList);
+        Object.entries(files).forEach(([key, value]) => {
+            switch (key) {
+                case ".html":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(htmlReplacer);
+                    });
+                    break;
+                case ".css":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(scssReplacer);
+                    });
+                    break;
+                case ".scss":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(scssReplacer);
+                    });
+                    break;
+                case ".js":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(jsReplacer);
+                    });
+                    break;
+                case ".jsx":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(jsReplacer);
+                    });
+                    break;
+                case ".ts":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(jsReplacer);
+                    });
+                    break;
+                case ".tsx":
+                    value.forEach(file => {
+                        replaceInFile(file, conversionMap)(jsReplacer);
+                    });
+                    break;
+                default:
+                    console.log(`No support for ${key} files just yet`);
+                    break;
+            }
+        });
     });
 }
 main();

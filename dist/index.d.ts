@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 export {};
 /**
  * Currently a Type error occurs when a file points to a non-existent image reference in html (e.g a deleted image or broken link of some sort):
