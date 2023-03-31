@@ -8,7 +8,6 @@ import chalk from 'chalk'
 import ignore from 'ignore'
 import csstree from 'css-tree'
 import minimist from 'minimist'
-import * as cheerio from 'cheerio'
 
 type IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
 const fileExtensions: IRecognizedFiles = ['.html', '.css', '.scss', '.ts', ".js", ".tsx", ".jsx"]
@@ -201,27 +200,6 @@ function replaceInFile(pathToFile: string, conversionMap: {
         const modifiedFile = replacer(fileString, conversionMap, pathToFile)
         fs.writeFileSync(pathToFile, modifiedFile)
     }
-}
-
-/**
- * Returns a converted html file. It parses a html file looking for references to images, 
- * and replaces those references with references to new converted images gotten from the conversion Map. It then returns the converted file as a string
- * @param fileString - string contents of the file to be parsed
- * @param conversionMap - This is an object containing input images as keys and the images they were converted to (output images) as values
- * @param pathToFile - path to file to be parsed
- * @deprecated
- */
-function htmlOldReplacer(fileString: string, conversionMap: { [key: string]: string }, pathToFile: string) {
-    const $ = cheerio.load(fileString, null, true)
-
-    $('img').toArray().forEach(el => {
-        const source = $(el).attr('src')
-        if (source) {
-            $(el).attr('src', path.relative(path.dirname(pathToFile), conversionMap[path.join(path.dirname(pathToFile), source)]))
-        }
-    })
-
-    return $.html()
 }
 
 /**
